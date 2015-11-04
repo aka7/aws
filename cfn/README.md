@@ -1,5 +1,4 @@
-# AWS CFN templates to create multi AZ subnets
-HA NAT instances
+# AWS CFN templates to create multi AZ subnets, NAT instances and Bastionhost
 
 ###Things note:
 
