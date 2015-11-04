@@ -1,6 +1,7 @@
 # AWS CFN templates 
 
 various cfn templates to create vpc subnets in multi availability zones, NAT instances and Bastionhost
+
 Mainly for my reference but may be useful to others.
 
 ###Things note:
@@ -11,7 +12,7 @@ aws-vpc.json
 creates public private subnets in 3 AZ.
 ````
 - create the VPC first, thats simple to do. I didn't bother with CFN for that.
-- modify the subnetconfig to suit your vpc subnet allocation, ones there are an example subnets
+- modify the subnetconfig to suit your vpc subnet allocation, ones here are an example subnets
 "SubnetConfig" : {
       "VPC"     : { "CIDR" : "10.248.0.0/16" },
       "public-subnet-1a"  : { "CIDR" : "10.248.1.0/24" },
@@ -22,7 +23,21 @@ creates public private subnets in 3 AZ.
       "private-subnet-1c" : { "CIDR" : "10.248.6.0/24" }
     },
 
-- if you have VPN connection into your office, and have VPN gateway, then enter the vpngateway details,  otherwise remove this from the template, This gateway is only there to create a static route for your internal supernet into private routing table.
+- if you have a VPN gateway, then enter the VpnGatewayID, otherwise remove this from the template, 
+you will need remove the following.
+
+    "privateVPNGatewayRouteProp" : {
+        "Type" : "AWS::EC2::VPNGatewayRoutePropagation",
+        "Properties" : {
+                "RouteTableIds" : [{"Ref" : "PrivateRouteTableA"},{"Ref" : "PrivateRouteTableB"},{"Ref" : "PrivateRouteTableC"}],
+                "VpnGatewayId" : { "Ref" : "VpnGatewayID" }
+        }
+     },
+
+
+
+
+This gateway is only there to create a static route for your internal supernet into private routing table.
 
 launch aws-vpc.json (provide your vpcid) - creates subnets you specify
 
