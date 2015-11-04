@@ -1,0 +1,170 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description" : "Auto scaling for nat instances, creates one nat instance per AZ, for HA",
+
+    "Parameters": {
+        "KeyName": {
+            "Description": "The EC2 Key Pair to allow SSH access to the instances",
+            "Type": "String",
+            "Default": "bootstrap"
+        },
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "m1.small",
+            "AllowedValues": [
+                "t1.micro",
+                "m1.small",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "cc1.4xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "VpcId": {
+            "Description": "ID of the VPC onto which to launch the application",
+            "Type": "String",
+	    "Default" : "vpc-xxxxxx"
+        },
+        "VpcSubnets" : {
+            "Description": "Subnets to use in VPC",
+            "Type": "CommaDelimitedList",
+            "Default": "subnet-x,subnet-y,subnet-z"
+        },
+        "NatImage" : {
+            "Description": "nat ami ",
+            "Type": "String",
+            "AllowedPattern": "ami-(\\w{8})",
+	    "Default" : "ami-6d60b01a"
+        }     
+    },
+  "Mappings" : {
+    "SubnetConfig" : {
+      "VPC"     : { "CIDR" : "10.248.128.0/22" }
+    },
+    "OFFICENetworks" : {
+      "PUBLIC" : { "CIDR" : "10.10.10.0/24" },
+      "DC1" : { "CIDR" : "10.240.0.0/16" },
+      "DC2" : { "CIDR" : "10.241.0.0/16" },
+      "InternalPrivateSuperNet" : { "CIDR" : "10.240.0.0/15" }
+    }
+  },
+
+    "Resources" : {
+        "OfficeSSH": {
+            "Properties": {
+                "GroupDescription": "SSH and management server access from Guardian network", 
+                "SecurityGroupIngress": [
+           		{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "GNMNetworks","PUBLIC", "CIDR" ]} } ],
+                "VpcId": { "Ref": "VpcId" }
+            }, 
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "NATSecurityGroup" : {
+        	"Type" : "AWS::EC2::SecurityGroup",
+         	"Properties" : {
+         		"GroupDescription" : "Enable internal access to the NAT device",
+        		"VpcId" : { "Ref" : "VpcId" },
+        		"SecurityGroupIngress" : [
+           		{ "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} } ,
+           		{ "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} } ,
+           		{ "IpProtocol" : "tcp", "FromPort" : "8140",  "ToPort" : "8140",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} },
+           		{ "IpProtocol" : "icmp", "FromPort" : "-1",  "ToPort" : "-1",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} },
+           		{ "IpProtocol" : "icmp", "FromPort" : "-1",  "ToPort" : "-1",  "CidrIp" : { "Fn::FindInMap" : [ "GNMNetworks","PUBLIC", "CIDR" ]} } ],
+        		"SecurityGroupEgress" : [
+           		{ "IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : "0.0.0.0/0" } ,
+           		{ "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" } ,
+           		{ "IpProtocol" : "tcp", "FromPort" : "443", "ToPort" : "443", "CidrIp" : "0.0.0.0/0" } ,
+          		 { "IpProtocol" : "tcp", "FromPort" : "8140", "ToPort" : "8140", "CidrIp" : "0.0.0.0/0" } ]
+     	 }
+    	},
+        "NATEIPAddressA" : {
+        	"Type" : "AWS::EC2::EIP",
+        	"Properties" : {
+        		"Domain" : "vpc"
+         	}
+        },
+        "NATEIPAddressB" : {
+        	"Type" : "AWS::EC2::EIP",
+        	"Properties" : {
+        		"Domain" : "vpc"
+         	}
+        },
+        "NATEIPAddressC" : {
+        	"Type" : "AWS::EC2::EIP",
+        	"Properties" : {
+        		"Domain" : "vpc"
+         	}
+        },
+
+        "AutoscalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+		"AvailabilityZones": { "Fn::GetAZs": "" },
+                "LaunchConfigurationName": { "Ref": "LaunchConfig" },
+                "MinSize": "3",
+                "MaxSize": "3",
+                "DesiredCapacity": "3",
+                "HealthCheckType": "EC2",
+                "HealthCheckGracePeriod": 300,
+                "Tags" : [ 
+                    {
+                        "Key": "Stage", "Value": "PROD",
+                        "PropagateAtLaunch": "true"
+                    },
+                    {
+                        "Key": "Stack", "Value": "gu-aws",
+                        "PropagateAtLaunch": "true"
+                    },                    
+                    {
+                        "Key": "App", "Value": "nat-instance",
+                        "PropagateAtLaunch": "true"
+                    },
+          	    { "Key" : "Name", "Value" : "NAT-instance",
+                        "PropagateAtLaunch": "true"
+		    }
+                ],
+                "VPCZoneIdentifier": { "Ref": "VpcSubnets" }
+            }
+        },
+        "LaunchConfig": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Properties": {
+                "ImageId" : { "Ref" : "NatImage"},
+                "InstanceType"   : { "Ref": "InstanceType" },
+		"AssociatePublicIpAddress" : "true",
+                "SecurityGroups" : [{ "Ref" : "NATSecurityGroup" }, { "Ref": "OfficeSSH"} ],
+                "KeyName": { "Ref": "KeyName" },
+                "EbsOptimized" : false,
+                "IamInstanceProfile" : "arn:aws:iam::528313740988:instance-profile/NATInstanceProfile",
+                "UserData"       : {
+                    "Fn::Base64" : {
+                        "Fn::Join" : ["\n",[
+                            "#cloud-config",
+                            "cloud_type: auto",
+			    "package_upgrade: true",
+                            "packages:",
+                            " - python-pip",
+                            "runcmd:",
+                            " - pip install awscli",
+                            " - aws s3 cp s3://your_bootstrap/ha-nat.sh /usr/local/bin",
+                            " - sh /usr/local/bin/ha-nat.sh",
+                            " - aws s3 cp s3://<your_bootstrap>/eipassign.sh /usr/local/bin",
+                            " - sh /usr/local/bin/eipassign.sh",
+                            " - yum update -y",
+                        ]]
+                    }
+                }
+	    }
+        } 
+    }
+}

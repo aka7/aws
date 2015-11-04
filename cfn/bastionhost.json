@@ -1,0 +1,167 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description" : "auto scaling for bastion/jumphost host, creates only one, with elastic-ip",
+
+    "Parameters": {
+        "KeyName": {
+            "Description": "The EC2 Key Pair to allow SSH access to the instances",
+            "Type": "String",
+            "Default": "bootstrap"
+        },
+        "InstanceType": {
+            "Description": "EC2 instance type",
+            "Type": "String",
+            "Default": "t1.micro",
+            "AllowedValues": [
+                "t1.micro",
+                "m1.small",
+                "m1.small",
+                "m1.medium",
+                "m1.large",
+                "m1.xlarge",
+                "m2.xlarge",
+                "m2.2xlarge",
+                "m2.4xlarge",
+                "c1.medium",
+                "c1.xlarge",
+                "cc1.4xlarge",
+                "cc2.8xlarge",
+                "cg1.4xlarge"
+            ],
+            "ConstraintDescription": "must be a valid EC2 instance type."
+        },
+        "VpcId": {
+            "Description": "ID of the VPC onto which to launch the application",
+            "Type": "String",
+	    "Default" : "vpc-xxxx"
+        },
+        "VpcSubnets" : {
+            "Description": "Subnets to use in VPC",
+            "Type": "CommaDelimitedList",
+            "Default": "subnet-x,subnet-y,subnet-z"
+        },
+        "SSHFrom" : {
+      	    "Description" : "Lockdown SSH access to the bastion host (should be from your office/home  address only)",
+            "Type" : "String",
+            "MinLength": "9",
+            "MaxLength": "18",
+            "Default" : "10.234.1.10/32",
+            "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+            "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+    },
+        "BastionImage" : {
+            "Description": "aws image for bastion host",
+            "Type": "String",
+            "AllowedPattern": "ami-(\\w{8})",
+	    "Default" : "ami-61555115"
+        }     
+    },
+    "Mappings" : {
+    	"SubnetConfig" : {
+      		"VPC"     : { "CIDR" : "10.248.128.0/22" }
+    },
+    "GNMNetworks" : {
+      "PUBLIC" : { "CIDR" : "10.10.10.0/24" },
+      "DC1" : { "CIDR" : "10.240.0.0/16" },
+      "DC2" : { "CIDR" : "10.241.0.0/16" },
+      "OfficePrivateSuperNet" : { "CIDR" : "10.240.0.0/15" }
+    }
+  },
+
+    "Resources" : {
+        "OfficeSSH": {
+            "Properties": {
+                "GroupDescription": "SSH and management server access from Guardian network", 
+                "SecurityGroupIngress": [
+                    {
+                        "CidrIp": "10.10.10.0/24", 
+                        "FromPort": "22",
+                        "IpProtocol": "tcp", 
+                        "ToPort": "22"
+                    }
+                ], 
+                "VpcId": { "Ref": "VpcId" }
+            }, 
+            "Type": "AWS::EC2::SecurityGroup"
+        },
+        "BastionSecurityGroup" : {
+        	"Type" : "AWS::EC2::SecurityGroup",
+      		"Properties" : {
+        	"GroupDescription" : "Enable access to the Bastion host",
+        	"VpcId" : { "Ref" : "VpcId" },
+        	"SecurityGroupIngress" : [ { "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Ref" : "SSHFrom" }} ],
+        	"SecurityGroupEgress"  : [ 
+				{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig", "VPC", "CIDR" ]}},
+				{ "IpProtocol" : "icmp", "FromPort" : "-1",  "ToPort" : "-1",  "CidrIp" : "0.0.0.0/0"}
+				]
+      		}
+    	},
+        "BastionEIP" : {
+        	"Type" : "AWS::EC2::EIP",
+        	"Properties" : {
+        		"Domain" : "vpc"
+         	}
+        },
+        "AutoscalingGroup": {
+            "Type": "AWS::AutoScaling::AutoScalingGroup",
+            "Properties": {
+		"AvailabilityZones": { "Fn::GetAZs": "" },
+                "LaunchConfigurationName": { "Ref": "LaunchConfig" },
+                "MinSize": "1",
+                "MaxSize": "1",
+                "DesiredCapacity": "1",
+                "HealthCheckType": "EC2",
+                "HealthCheckGracePeriod": 300,
+                "Tags" : [ 
+                    {
+                        "Key": "Stage", "Value": "PROD",
+                        "PropagateAtLaunch": "true"
+                    },
+                    {
+                        "Key": "Stack", "Value": "gu-aws",
+                        "PropagateAtLaunch": "true"
+                    },                    
+                    {
+                        "Key": "App", "Value": "jumphost",
+                        "PropagateAtLaunch": "true"
+                    },
+          	    { "Key" : "Name", "Value" : "bastionhost",
+                        "PropagateAtLaunch": "true"
+		    }
+                ],
+                "VPCZoneIdentifier": { "Ref": "VpcSubnets" }
+            }
+        },
+        "LaunchConfig": {
+            "Type": "AWS::AutoScaling::LaunchConfiguration",
+            "Properties": {
+                "ImageId" : { "Ref" : "BastionImage"},
+                "InstanceType"   : { "Ref": "InstanceType" },
+                "SecurityGroups" : [{ "Ref" : "BastionSecurityGroup" }, { "Ref": "OfficeSSH"} ],
+		"AssociatePublicIpAddress" : "true",
+                "KeyName": { "Ref": "KeyName" },
+                "EbsOptimized" : false,
+                "IamInstanceProfile" : "arn:aws:iam::528313740988:instance-profile/BastionInstanceProfile",
+                "UserData"       : {
+                    "Fn::Base64" : {
+                        "Fn::Join" : ["\n",[
+                            "#cloud-config",
+                            "cloud_type: auto",
+			    "package_upgrade: true",
+                            "packages:",
+                            " - python-pip",
+                            "runcmd:",
+                            " - pip install awscli",
+                            " - aws s3 cp s3://guinit/eipassign.sh /usr/local/bin",
+                            " - sh /usr/local/bin/eipassign.sh",
+                            " - aws s3 cp s3://guinit/publickeys/websys /tmp/websys",
+                            " - cat /tmp/websys >> /home/ec2-user/.ssh/authorized_keys",
+                            " - yum update -y"
+                        ]]
+                    }
+                }
+	    }
+        } 
+    }
+}
+
