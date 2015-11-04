@@ -64,19 +64,19 @@
     },
 
     "SubnetConfig" : {
-      "VPC"     : { "CIDR" : "10.248.128.0/22" },
-      "public-subnet-1a"  : { "CIDR" : "10.248.128.0/26" },
-      "private-subnet-1a" : { "CIDR" : "10.248.129.0/26" },
-      "public-subnet-1b"  : { "CIDR" : "10.248.128.64/26" },
-      "private-subnet-1b" : { "CIDR" : "10.248.129.64/26" },
-      "public-subnet-1c"  : { "CIDR" : "10.248.128.128/26" },
-      "private-subnet-1c" : { "CIDR" : "10.248.129.128/26" }
+      "VPC"     : { "CIDR" : "10.248.0.0/16" },
+      "public-subnet-1a"  : { "CIDR" : "10.248.1.0/24" },
+      "private-subnet-1a" : { "CIDR" : "10.248.2.0/24" },
+      "public-subnet-1b"  : { "CIDR" : "10.248.3.0/24" },
+      "private-subnet-1b" : { "CIDR" : "10.248.4.0/24" },
+      "public-subnet-1c"  : { "CIDR" : "10.248.5.0/24" },
+      "private-subnet-1c" : { "CIDR" : "10.248.6.0/24" }
     },
-    "GNMNetworks" : {
+    "OfficeNetworks" : {
       "DC1" : { "CIDR" : "10.252.0.0/16" },
       "DC2" : { "CIDR" : "10.253.0.0/16" },
-      "DigDevSuperNet" : { "CIDR" : "10.249.0.0/16" },
-      "GC2PrivateSuperNet" : { "CIDR" : "10.252.0.0/15" }
+      "DeveloperSuperNet" : { "CIDR" : "10.249.0.0/16" },
+      "PrivateSuperNet" : { "CIDR" : "10.252.0.0/15" }
     }
   },
 
@@ -485,7 +485,7 @@
         "Protocol" : "1",
         "RuleAction" : "allow",
         "Egress" : "false",
-        "CidrBlock" : { "Fn::FindInMap" : [ "GNMNetworks", "GC2PrivateSuperNet","CIDR" ]},
+        "CidrBlock" : { "Fn::FindInMap" : [ "OfficeNetworks", "PrivateSuperNet","CIDR" ]},
         "PortRange" : { "From" : "0", "To" : "65535" }
       }
     },
@@ -501,7 +501,7 @@
         "PortRange" : { "From" : "0", "To" : "65535" }
       }
     },
-    "InboundDigDevICMPPrivateNetworkAclEntry" : {
+    "InboundDeveloperICMPPrivateNetworkAclEntry" : {
       "Type" : "AWS::EC2::NetworkAclEntry",
       "Properties" : {
         "NetworkAclId" : { "Ref" : "PrivateNetworkAcl" },
@@ -510,7 +510,7 @@
         "Protocol" : "1",
         "RuleAction" : "allow",
         "Egress" : "false",
-        "CidrBlock" : { "Fn::FindInMap" : [ "GNMNetworks", "DigDevSuperNet","CIDR" ]},
+        "CidrBlock" : { "Fn::FindInMap" : [ "OfficeNetworks", "DeveloperSuperNet","CIDR" ]},
         "PortRange" : { "From" : "0", "To" : "65535" }
       }
     },
