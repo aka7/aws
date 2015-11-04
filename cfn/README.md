@@ -1,13 +1,15 @@
-# AWS CFN templates to create multi AZ subnets, NAT instances and Bastionhost
+# AWS CFN templates 
+
+various cfn templates to create vpc subnets in multi availability zones, NAT instances and Bastionhost
 
 ###Things note:
 
-I had VPNGateway setup, which is why there's a VPN gateway section. remove this if you don't need it.
+I had VPNGateway setup to connect to office network, which is why there's a VPN gateway section. remove this if you don't need it.
 
 Order of run :
 ````
 - create the VPC first, thats simple to do. I didn't bother with CFN for that.
-- if have VPN connection into your office, and have VPN gateway, then it add it here, otherwise remove this from the template, This gateway is only there to create a route  for your internal supernet into private routing table.
+- if have VPN connection into your office, and have VPN gateway, then enter the vpngateway details,  otherwise remove this from the template, This gateway is only there to create a static route for your internal supernet into private routing table.
 
 launch aws-vpc.json (provide your vpcid) - creates subnets you specify
 
