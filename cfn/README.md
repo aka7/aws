@@ -1,8 +1,8 @@
-# aws CFN templates to create multi AZ subnets
+# AWS CFN templates to create multi AZ subnets
 HA NAT instances
-You need will to modify AMI ids, ip addresses to suit your requirement.
 
-FEW things note:
+###Things note:
+
 I had VPNGateway setup, which is why there's a VPN gateway section. remove this if you don't need it.
 
 Order of run :
