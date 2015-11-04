@@ -2,14 +2,15 @@
 
 various cfn templates to create vpc subnets in multi availability zones, NAT instances and Bastionhost
 
-Mainly for my reference but may be useful to others.
+Mainly for my reference but may be useful to others as a starting point
 
 ###Things note:
 
 I had VPNGateway setup to connect to office network, which is why there's a VPN gateway section. remove this if you don't need it.
 
 aws-vpc.json 
-creates public private subnets in 3 AZ.
+
+creates publici & private subnets in 3 AZ.
 ````
 - create the VPC first, thats simple to do. I didn't bother with CFN for that.
 - modify the subnetconfig to suit your vpc subnet allocation, ones here are an example subnets
