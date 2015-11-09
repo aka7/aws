@@ -48,7 +48,7 @@ launch basitionhost.json (if you want a basition/jumphost, provide vpcid and Vpc
 ````
 
 ##NOTES on HA NAT isntances:
-You will need the amazon provided ha-nat.sh script, uploaded to an s3 location, and allowed thorugh instance profile see http://docs.aws.amazon.com/codedeploy/latest/userguide/how-to-create-iam-instance-profile.html#getting-started-create-ec2-role-cli
+You will need the amazon provided ha-nat.sh script, uploaded to an private s3 location, and allowed through instance profile see http://docs.aws.amazon.com/codedeploy/latest/userguide/how-to-create-iam-instance-profile.html#getting-started-create-ec2-role-cli
 
 I also used the ipassign script from  http://jsianes.blogspot.co.uk/2014/06/aws-how-to-auto-attach-public-ip-from.html
 with some subtle modification to suit my needs.
