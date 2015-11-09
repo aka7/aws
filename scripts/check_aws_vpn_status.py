@@ -4,9 +4,8 @@ modified version of orignal script by @author Bommarito Consulting, LLC; http://
 @date 20131029
 This script monitors and logs to CSV the status of all tunnels for all VPNs for a single EC2 region.
 Abdul Karim @1akarim - Modified to iterate through multiple accounts
-    It sends alerts to alerta, https://github.com/guardian/alert
-    if you have own monitoring system
-    TODO: change to make more generic for anyone else to use
+     modified to also send alerts to alerta, our internal monitoring system. see  https://github.com/guardian/alerta
+     if you want to enable this, set sendalert=True
 '''
 
 # Imports
@@ -17,9 +16,17 @@ import datetime
 import csv
 import sys,json, yaml, os,re, tempfile
 
+
+# If you have alerta, then set this to true and set alerta_endpoint
+sendalert=False
+
 # For our internal monitoring sytem, we use https://github.com/guardian/alerta
-from alerta.api import ApiClient
-from alerta.alert import Alert
+if sendalert:
+	from alerta.api import ApiClient
+	from alerta.alert import Alert
+
+# internal alerta endpoint, only needed if you set sednalert=True
+alerta_endpoint='https://<alerta>:8080'
  
 # Set your AWS creds if you aren't using a dotfile or some other boto auth method
 aws_access_key_id=None
@@ -45,16 +52,12 @@ def getAccounts(yfile):
 	f.close()
 	return dataMap
  
-def report_tunnel_down(tunnel, vpnid=None):
+def report_tunnel_down(outside_ip,status_message,last_status_change, aws_acc=None,gwid=None,gwip=None,vpnid=None,severity='minor'):
 	'''
 	Report and possibly take corrective action.
 	'''
-	#if vpnid == None:
-	#    sys.stderr.write("Tunnel {0} is down since {1}\n"
-	#	.format(tunnel.outside_ip_address, tunnel.last_status_change))
-	#else:
-	#    sys.stderr.write(vpnid+": Tunnel {0} is down since {1}\n"
-	#	.format(tunnel.outside_ip_address, tunnel.last_status_change))
+	sys.stderr.write(aws_acc+": Tunnel {0} with gateway ip {1} is down since {2}\n"
+		.format(outside_ip, gwip,last_status_change))
 
 def record_status(file,resource):
 	'''
@@ -78,7 +81,7 @@ def alert_tunnel_down(outside_ip,status_message,last_status_change, aws_acc=None
 	Report tunnel down status to alerta
 	only if we haven't already sent an alert
 	'''
-	api = ApiClient(endpoint='http://<alertendpoint>:8080')
+	api = ApiClient(endpoint=alertaendpoint)
 	alertres = vpnid+','+gwid+','+outside_ip
 	status_file =tempdir+'/'+alertres.replace(',','_')+'.down' 
 	count = 1
@@ -104,7 +107,7 @@ def alert_tunnel_down(outside_ip,status_message,last_status_change, aws_acc=None
 	    service=[aws_acc],
     	    severity=severity,
     	    value=status_message,
-    	    text=aws_acc+' : Tunnel '+outside_ip +' Down since '+last_status_change+'.'+' Guardian endpoint: '+gwip,
+    	    text=aws_acc+' : Tunnel '+outside_ip +' Down since '+last_status_change+'.'+' endpoint: '+gwip,
     	    tags=['aws'],
     	    attributes={'customer': 'The Guardian', 'account' : aws_acc,'GatewayId' : gwid+' [ '+gwip+' ]','vpnId' : vpnid, 'TunnelOutsideIp' : outside_ip}
 	    )
@@ -119,7 +122,7 @@ def alert_tunnel_up(outside_ip,status_message,last_status_change, aws_acc=None,g
 	Report tunnel up status to alerta
 	only if a down status was sent
 	'''
-	api = ApiClient(endpoint='http://<alertendpoint>:8080')
+	api = ApiClient(endpoint=alerta_endpoint)
 	alertres = vpnid+','+gwid+','+outside_ip
 	status_file =tempdir+'/'+alertres.replace(',','_')+'.down' 
 	if not os.path.exists(status_file):
@@ -134,7 +137,7 @@ def alert_tunnel_up(outside_ip,status_message,last_status_change, aws_acc=None,g
 	    service=[aws_acc],
     	    severity='normal',
     	    value=status_message,
-    	    text=aws_acc+' : Tunnel '+outside_ip +' up since '+last_status_change+'.'+'Guardian endpoint: '+gwip,
+    	    text=aws_acc+' : Tunnel '+outside_ip +' up since '+last_status_change+'.'+'endpoint: '+gwip,
     	    tags=['aws'],
     	    attributes={'customer': 'The Guardian', 'account' : aws_acc,'GatewayId' : gwid+' [ '+gwip+' ]','vpnId' : vpnid, 'TunnelOutsideIp' : outside_ip}
 	    )
@@ -153,18 +156,26 @@ def test_tunnel_status(tunnel,aws_acc=None,gwid=None,gwip=None,vpnid=None):
 	# Check by status string
 	if tunnel.status == 'DOWN':
 		alert_severity = "major"
-		alert_tunnel_down(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid,alert_severity)
+		if sendalert:
+			alert_tunnel_down(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid,alert_severity)
+		else:
+			report_tunnel_down(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid,alert_severity)
 		return "DOWN"
 	else:
-		alert_tunnel_up(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid)
+		if sendalert:
+			alert_tunnel_up(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid)
+		else:
+			report_tunnel_up(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid)
+			
 		return "UP"
 
 def change_tunnel_alert_severity(tunnels):
 	'''
 	 if both tunnels are down, change severity to critical
 	'''
-	for tunnel in tunnels:
-		alert_tunnel_down(tunnel['outside_ip'],tunnel['last_status_change'],tunnel['status_message'],tunnel['accountname'],tunnel['customer_gateway_id'],tunnel['customer_gateway_ip'],tunnel['vpnid'],'critical')
+	if sendalert:
+		for tunnel in tunnels:
+			alert_tunnel_down(tunnel['outside_ip'],tunnel['last_status_change'],tunnel['status_message'],tunnel['accountname'],tunnel['customer_gateway_id'],tunnel['customer_gateway_ip'],tunnel['vpnid'],'critical')
  
 def test_vpc_status():
 	'''
@@ -235,7 +246,8 @@ def test_multi_vpc_status(awsaccounts):
 
 			if downcount == len(vpn_connection.tunnels):
 				# if both tunnels are down, change severity major
-				change_tunnel_alert_severity(downtunnels)
+				if sendalert:
+					change_tunnel_alert_severity(downtunnels)
  
 if __name__ == "__main__":
 	today = str(datetime.date.today())
