@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 '''
-modified for orignal script done by @author Bommarito Consulting, LLC; http://bommaritollc.com/
+modified version of orignal script by @author Bommarito Consulting, LLC; http://bommaritollc.com/
 @date 20131029
 This script monitors and logs to CSV the status of all tunnels for all VPNs for a single EC2 region.
 Abdul Karim @1akarim - Modified to iterate through multiple accounts
