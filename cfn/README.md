@@ -4,7 +4,7 @@ various cfn templates to create vpc subnets in multi availability zones, NAT ins
 
 Mainly for my reference but may be useful to others as a starting point
 
-###Things note:
+###Things to note:
 
 I had VPNGateway setup to connect to office network, which is why there's a VPN gateway section. remove this if you don't need it.
 
