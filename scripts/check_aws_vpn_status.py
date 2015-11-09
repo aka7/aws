@@ -33,6 +33,13 @@ aws_access_key_id=None
 aws_secret_access_key=None
 ec2_region='eu-west-1'
 
+# paht to your aws vpn account, in yaml format,i.e
+#-
+# account: aws-test
+# access_key_id: <access_key>
+# secret_access_key: <secret key> 
+aws_vpnaccounts='/opt/etc/awsvpnaccounts.yaml'
+
 # readonly vpn monitor account
 #awsaccounts = {"aws" => {"access_key_id" => "test","secret_access_key" => "test"}}
  
@@ -252,7 +259,7 @@ def test_multi_vpc_status(awsaccounts):
 if __name__ == "__main__":
 	today = str(datetime.date.today())
 	csv_file_name = logpath+"aws_vpn_status-"+today+".log"
-	awsaccounts = getAccounts('/opt/etc/awsvpnaccounts.yaml')
+	awsaccounts = getAccounts(aws_vpnaccounts)
 	if awsaccounts == "":
 		test_vpc_status()
 	else:
