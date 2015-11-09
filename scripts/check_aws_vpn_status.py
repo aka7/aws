@@ -4,6 +4,9 @@ modified version of orignal script by @author Bommarito Consulting, LLC; http://
 @date 20131029
 This script monitors and logs to CSV the status of all tunnels for all VPNs for a single EC2 region.
 Abdul Karim @1akarim - Modified to iterate through multiple accounts
+    It sends alerts to alerta, https://github.com/guardian/alert
+    if you have own monitoring system
+    TODO: change to make more generic for anyone else to use
 '''
 
 # Imports
@@ -13,6 +16,8 @@ import boto.vpc
 import datetime
 import csv
 import sys,json, yaml, os,re, tempfile
+
+# For our internal monitoring sytem, we use https://github.com/guardian/alerta
 from alerta.api import ApiClient
 from alerta.alert import Alert
  
@@ -73,7 +78,7 @@ def alert_tunnel_down(outside_ip,status_message,last_status_change, aws_acc=None
 	Report tunnel down status to alerta
 	only if we haven't already sent an alert
 	'''
-	api = ApiClient(endpoint='http://monitoring.guprod.gnm:8080')
+	api = ApiClient(endpoint='http://<alertendpoint>:8080')
 	alertres = vpnid+','+gwid+','+outside_ip
 	status_file =tempdir+'/'+alertres.replace(',','_')+'.down' 
 	count = 1
@@ -114,7 +119,7 @@ def alert_tunnel_up(outside_ip,status_message,last_status_change, aws_acc=None,g
 	Report tunnel up status to alerta
 	only if a down status was sent
 	'''
-	api = ApiClient(endpoint='http://monitoring.guprod.gnm:8080')
+	api = ApiClient(endpoint='http://<alertendpoint>:8080')
 	alertres = vpnid+','+gwid+','+outside_ip
 	status_file =tempdir+'/'+alertres.replace(',','_')+'.down' 
 	if not os.path.exists(status_file):
