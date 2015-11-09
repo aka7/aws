@@ -64,7 +64,7 @@
             "Properties": {
                 "GroupDescription": "SSH and management server access from Guardian network", 
                 "SecurityGroupIngress": [
-           		{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "GNMNetworks","PUBLIC", "CIDR" ]} } ],
+           		{ "IpProtocol" : "tcp", "FromPort" : "22",  "ToPort" : "22",  "CidrIp" : { "Fn::FindInMap" : [ "OFFICENetworks","PUBLIC", "CIDR" ]} } ],
                 "VpcId": { "Ref": "VpcId" }
             }, 
             "Type": "AWS::EC2::SecurityGroup"
@@ -79,7 +79,7 @@
            		{ "IpProtocol" : "tcp", "FromPort" : "443",  "ToPort" : "443",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} } ,
            		{ "IpProtocol" : "tcp", "FromPort" : "8140",  "ToPort" : "8140",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} },
            		{ "IpProtocol" : "icmp", "FromPort" : "-1",  "ToPort" : "-1",  "CidrIp" : { "Fn::FindInMap" : [ "SubnetConfig","VPC", "CIDR" ]} },
-           		{ "IpProtocol" : "icmp", "FromPort" : "-1",  "ToPort" : "-1",  "CidrIp" : { "Fn::FindInMap" : [ "GNMNetworks","PUBLIC", "CIDR" ]} } ],
+           		{ "IpProtocol" : "icmp", "FromPort" : "-1",  "ToPort" : "-1",  "CidrIp" : { "Fn::FindInMap" : [ "OFFICENetworks","PUBLIC", "CIDR" ]} } ],
         		"SecurityGroupEgress" : [
            		{ "IpProtocol" : "icmp", "FromPort" : "-1", "ToPort" : "-1", "CidrIp" : "0.0.0.0/0" } ,
            		{ "IpProtocol" : "tcp", "FromPort" : "80",  "ToPort" : "80",  "CidrIp" : "0.0.0.0/0" } ,
@@ -158,9 +158,9 @@
                             " - pip install awscli",
                             " - aws s3 cp s3://your_bootstrap/ha-nat.sh /usr/local/bin",
                             " - sh /usr/local/bin/ha-nat.sh",
-                            " - aws s3 cp s3://<your_bootstrap>/eipassign.sh /usr/local/bin",
+                            " - aws s3 cp s3://your_bootstrap/eipassign.sh /usr/local/bin",
                             " - sh /usr/local/bin/eipassign.sh",
-                            " - yum update -y",
+                            " - yum update -y"
                         ]]
                     }
                 }
