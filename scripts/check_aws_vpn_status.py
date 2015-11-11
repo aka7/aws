@@ -5,7 +5,7 @@ modified version of orignal script by @author Bommarito Consulting, LLC; http://
 This script monitors and logs to CSV the status of all tunnels for all VPNs for a single EC2 region.
 Abdul Karim @1akarim - Modified to iterate through multiple accounts
      modified to also send alerts to alerta, our internal monitoring system. see  https://github.com/guardian/alerta
-     if you want to enable this, set sendalert=True
+     if you want to enable alerta, set enablealerta=True and set alerta_endpoint
 '''
 
 # Imports
@@ -18,10 +18,10 @@ import sys,json, yaml, os,re, tempfile
 
 
 # If you have alerta, then set this to true and set alerta_endpoint
-sendalert=False
+enablealerta=False
 
 # For our internal monitoring sytem, we use https://github.com/guardian/alerta
-if sendalert:
+if enablealerta:
 	from alerta.api import ApiClient
 	from alerta.alert import Alert
 
@@ -163,13 +163,13 @@ def test_tunnel_status(tunnel,aws_acc=None,gwid=None,gwip=None,vpnid=None):
 	# Check by status string
 	if tunnel.status == 'DOWN':
 		alert_severity = "major"
-		if sendalert:
+		if enablealerta:
 			alert_tunnel_down(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid,alert_severity)
 		else:
 			report_tunnel_down(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid,alert_severity)
 		return "DOWN"
 	else:
-		if sendalert:
+		if enablealerta:
 			alert_tunnel_up(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid)
 		else:
 			report_tunnel_up(tunnel.outside_ip_address, tunnel.status_message, str(tunnel.last_status_change),aws_acc,gwid,gwip,vpnid)
@@ -180,7 +180,7 @@ def change_tunnel_alert_severity(tunnels):
 	'''
 	 if both tunnels are down, change severity to critical
 	'''
-	if sendalert:
+	if enablealerta:
 		for tunnel in tunnels:
 			alert_tunnel_down(tunnel['outside_ip'],tunnel['last_status_change'],tunnel['status_message'],tunnel['accountname'],tunnel['customer_gateway_id'],tunnel['customer_gateway_ip'],tunnel['vpnid'],'critical')
  
@@ -253,7 +253,7 @@ def test_multi_vpc_status(awsaccounts):
 
 			if downcount == len(vpn_connection.tunnels):
 				# if both tunnels are down, change severity major
-				if sendalert:
+				if enablealerta:
 					change_tunnel_alert_severity(downtunnels)
  
 if __name__ == "__main__":
