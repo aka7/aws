@@ -25,8 +25,8 @@ if enablealerta:
 	from alerta.api import ApiClient
 	from alerta.alert import Alert
 
-# internal alerta endpoint, only needed if you set sednalert=True
-alerta_endpoint='https://<alerta>:8080'
+# internal alerta endpoint, only needed if you set enablealerta=True
+alerta_endpoint='http://<altera_endpoint?:8080'
  
 # Set your AWS creds if you aren't using a dotfile or some other boto auth method
 aws_access_key_id=None
@@ -88,7 +88,7 @@ def alert_tunnel_down(outside_ip,status_message,last_status_change, aws_acc=None
 	Report tunnel down status to alerta
 	only if we haven't already sent an alert
 	'''
-	api = ApiClient(endpoint=alertaendpoint)
+	api = ApiClient(endpoint=alerta_endpoint)
 	alertres = vpnid+','+gwid+','+outside_ip
 	status_file =tempdir+'/'+alertres.replace(',','_')+'.down' 
 	count = 1
@@ -110,7 +110,7 @@ def alert_tunnel_down(outside_ip,status_message,last_status_change, aws_acc=None
 	    event='TunnelDown',
 	    correlate=['TunnelUp'],
 	    group='aws',
-	    environment='PROD',
+	    environment='Production',
 	    service=[aws_acc],
     	    severity=severity,
     	    value=status_message,
@@ -140,7 +140,7 @@ def alert_tunnel_up(outside_ip,status_message,last_status_change, aws_acc=None,g
 	    event='TunnelUp',
 	    correlate=['TunnelDown'],
 	    group='aws',
-	    environment='PROD',
+	    environment='Production',
 	    service=[aws_acc],
     	    severity='normal',
     	    value=status_message,
